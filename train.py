@@ -69,10 +69,6 @@ def get_dataloaders(data_dir):
     train_data = datasets.ImageFolder(train_dir, transform=train_transforms)
     test_data = datasets.ImageFolder(test_dir, transform=test_valid_transforms)
     valid_data = datasets.ImageFolder(valid_dir, transform=test_valid_transforms)
-
-    trainloader = torch.utils.data.DataLoader(train_data, batch_size=32, shuffle=True)
-    testloader = torch.utils.data.DataLoader(test_data, batch_size=32)
-    validloader = torch.utils.data.DataLoader(valid_data, batch_size=32)
     
     dataloaders = {
         "train": torch.utils.data.DataLoader(train_data, batch_size=32, shuffle=True),
@@ -161,16 +157,20 @@ def main():
     
     model = get_model(args.arch)
     
-    output_size = 102
+    dataloaders, class_to_idx = get_dataloaders(args.data_dir)
+
     input_size = model.classifier[0].in_features
+    output_size = len(class_to_idx)
+    model.class_to_idx = class_to_idx
     
     classifier = get_classifier(input_size, args.hidden_unit, output_size)
     model.classifier = classifier
     
-    dataloaders, class_to_idx = get_dataloaders(args.data_dir)
-    model.class_to_idx = class_to_idx
-    
-    device = torch.device('cuda' if args.gpu else 'cpu')
+    if torch.cuda.is_available():
+        device = torch.device('cuda' if args.gpu else 'cpu')
+    else:
+        print("GPU is not available. Use CPU instead.")
+        device = "cpu"
     
     optimizer = torch.optim.Adam(model.classifier.parameters(), lr=args.learning_rate)
     

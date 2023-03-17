@@ -103,3 +103,4 @@ ENV/
 .github/**
 
 trained_models
+flowers

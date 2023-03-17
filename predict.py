@@ -38,6 +38,8 @@ def parse_args():
     parser = argparse.ArgumentParser(prog='Image classifier prediction')
 
     parser.add_argument("image_path", type = str)
+    parser.add_argument("--cat_map_path", type = str, default = "./cat_to_name.json")
+    parser.add_argument("--checkpoint_path", type = str, default = "./trained_models/checkpoint.pth")
     parser.add_argument("--topk", default = 1, type = int)
     parser.add_argument("--gpu", action='store_const', default = False, const = True)
 
@@ -58,8 +60,8 @@ def get_model(arch = "vgg13"):
         
     return model
 
-def get_cat_name():
-    with open('cat_to_name.json', 'r') as f:
+def get_cat_name(cat_map_path):
+    with open(cat_map_path, 'r') as f:
         cat_to_name = json.load(f)
         
     return cat_to_name
@@ -89,8 +91,8 @@ def get_model(arch):
         
     return model
 
-def get_classes_labels(class_to_idx, classes):
-    cat_to_name = get_cat_name()
+def get_classes_labels(class_to_idx, cat_map_path, classes):
+    cat_to_name = get_cat_name(cat_map_path)
     
     classes_to_idx = {val: key for key, val in class_to_idx.items()}
     top_k_idx = [classes_to_idx[classe] for classe in classes]
@@ -100,7 +102,7 @@ def get_classes_labels(class_to_idx, classes):
 
 def main():
     args = parse_args()
-    checkpoint_path = "./trained_models/checkpoint.pth"
+    checkpoint_path = args.checkpoint_path
     
     if not is_savefile_exist(args.image_path):
         raise Exception('Wrong file path')
@@ -108,7 +110,11 @@ def main():
     if not is_savefile_exist(checkpoint_path):
         raise Exception('Missing checkpoint file')
 
-    device = torch.device("cuda" if args.gpu else "cpu")
+    if torch.cuda.is_available():
+        device = torch.device('cuda' if args.gpu else 'cpu')
+    else:
+        print("GPU is not available. Use CPU instead.")
+        device = "cpu"
     
     image = Image.open(args.image_path)
     image = process_image(image)
@@ -122,7 +128,7 @@ def main():
     
     probs, classes = predict(image, model, device, args.topk)
 
-    labels = get_classes_labels(checkpoint["class_to_idx"], classes)
+    labels = get_classes_labels(checkpoint["class_to_idx"], args.cat_map_path, classes)
     
     for prob, label in zip(probs, labels):
         print(f"Result: {label} - {int(float(prob) * 100)}%")
